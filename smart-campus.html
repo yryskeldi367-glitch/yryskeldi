@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Campus AI — Управление кампусом</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#07111f;--panel:#0d1b2d;--panel2:#11253e;--text:#eef6ff;--muted:#9fb4ca;--line:#203a57;
+  --accent:#36a3ff;--accent-ink:#06101d;--green:#72e0c4;--yellow:#ffc857;--red:#ff7070;
+  --shadow:0 8px 30px rgba(0,0,0,.35);--radius:14px;
+}
+:root[data-theme="light"]{
+  --bg:#f1f5fb;--panel:#ffffff;--panel2:#eef3fa;--text:#0f2236;--muted:#5b7088;--line:#d7e1ee;
+  --accent:#1f7ae0;--accent-ink:#ffffff;--green:#12a37f;--yellow:#c98a00;--red:#d63c3c;
+  --shadow:0 8px 24px rgba(20,50,90,.10);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:'Inter','Segoe UI',system-ui,-apple-system,Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+small{color:var(--muted)}
+h2{margin:0 0 4px;font-size:22px}
+h3{margin:0 0 12px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.sub{color:var(--muted);margin:0 0 18px}
+
+.app{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
+.side{position:sticky;top:0;height:100vh;background:var(--panel);border-right:1px solid var(--line);padding:18px 14px;display:flex;flex-direction:column;gap:18px}
+.brand{display:flex;gap:10px;align-items:center;padding:4px 8px}
+.logo{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--accent),var(--green));color:var(--accent-ink);font-size:20px;font-weight:700}
+.brand b{display:block;line-height:1.1}
+#nav{display:flex;flex-direction:column;gap:4px}
+#nav button{display:flex;align-items:center;gap:12px;padding:11px 12px;border:0;background:transparent;border-radius:10px;cursor:pointer;color:var(--muted);font-weight:600;text-align:left;position:relative}
+#nav button i{font-style:normal;width:22px;text-align:center;font-size:17px}
+#nav button:hover{background:var(--panel2);color:var(--text)}
+#nav button.active{background:var(--accent);color:var(--accent-ink)}
+.nav-badge{margin-left:auto;background:var(--red);color:#fff;border-radius:999px;font-size:11px;padding:1px 7px;font-weight:700}
+.nav-badge:empty{display:none}
+.side-f{margin-top:auto;font-size:12px;color:var(--muted);padding:0 8px}
+.kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:0 5px;font-size:11px}
+
+.top{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:16px 28px;border-bottom:1px solid var(--line);background:var(--bg);position:sticky;top:0;z-index:5;backdrop-filter:blur(8px)}
+.top h1{margin:0;font-size:18px}
+.top-r{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.live{display:flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);font-size:13px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 var(--green);animation:pulse 2s infinite}
+.paused .dot{background:var(--yellow);animation:none}
+@keyframes pulse{70%{box-shadow:0 0 0 8px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.ib{border:1px solid var(--line);background:var(--panel);padding:7px 12px;border-radius:10px;cursor:pointer;font-weight:600;font-size:13px}
+.ib:hover{border-color:var(--accent)}
+main{padding:24px 28px 40px;max-width:1400px;margin:0 auto;width:100%}
+.tab{display:none;animation:fade .25s ease}
+.tab.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}}
+
+.grid{display:grid;gap:16px;margin-bottom:16px}
+.g-kpi{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.g-2{grid-template-columns:2fr 1fr}
+.g-2b{grid-template-columns:1.4fr 1fr}
+.g-eq{grid-template-columns:1fr 1fr}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);min-width:0}
+.kpi b{font-size:30px;line-height:1.1;display:block}
+.kpi .k-sub{font-size:12px;color:var(--muted);margin-top:4px}
+.kpi .ico{float:right;font-size:22px;opacity:.8}
+.chart-box{position:relative;height:280px}
+.chart-box.sm{height:230px}
+
+.badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
+.badge.normal{background:color-mix(in srgb,var(--green) 18%,transparent);color:var(--green)}
+.badge.warning{background:color-mix(in srgb,var(--yellow) 20%,transparent);color:var(--yellow)}
+.badge.critical{background:color-mix(in srgb,var(--red) 20%,transparent);color:var(--red)}
+.badge.info{background:color-mix(in srgb,var(--accent) 20%,transparent);color:var(--accent)}
+
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.toolbar input,.toolbar select,.field input,.field select{padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;min-width:0}
+.toolbar input{flex:1;min-width:180px}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;padding:10px 16px;font-weight:700;border-radius:10px;cursor:pointer}
+.btn:hover{filter:brightness(1.1)}
+.btn.ghost{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+.btn.danger{background:var(--red);color:#fff}
+.btn.sm{padding:5px 10px;font-size:12px;border-radius:8px}
+
+.rooms{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.room{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--green);border-radius:var(--radius);padding:14px;cursor:pointer;transition:.15s}
+.room.warning{border-left-color:var(--yellow)}.room.critical{border-left-color:var(--red)}
+.room:hover{transform:translateY(-3px);box-shadow:var(--shadow);border-color:var(--accent)}
+.room-h{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.room-h b{font-size:18px;display:block}
+.room-m{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0 4px}
+.room-m span{display:block;font-size:11px;color:var(--muted)}
+.room-m b{font-size:16px}
+.room-f{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:6px}
+.bar{height:6px;background:var(--panel2);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .5s}
+.spark{width:100%;height:30px;display:block}
+
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel)}
+table{width:100%;border-collapse:collapse;min-width:640px}
+th,td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--line);font-size:14px}
+th{background:var(--panel2);font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);position:sticky;top:0}
+tr:last-child td{border-bottom:0}
+tbody tr:hover{background:color-mix(in srgb,var(--accent) 6%,transparent)}
+.empty{padding:34px;text-align:center;color:var(--muted)}
+.tw select{padding:5px 8px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;font-size:13px}
+.act{display:flex;gap:6px}
+
+.form{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:10px;align-items:end}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+.field input,.field select{width:100%}
+
+.events{list-style:none;margin:0;padding:0;max-height:300px;overflow:auto}
+.events li{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+.events li:last-child{border:0}
+.events time{color:var(--muted);font-variant-numeric:tabular-nums;flex:none}
+.ev-dot{flex:none;width:8px;height:8px;border-radius:50%;margin-top:7px;background:var(--accent)}
+.ev-dot.warning{background:var(--yellow)}.ev-dot.critical{background:var(--red)}.ev-dot.normal{background:var(--green)}
+
+.recs{display:flex;flex-direction:column;gap:10px}
+.rec{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:12px;background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--accent)}
+.rec.warning{border-left-color:var(--yellow)}.rec.critical{border-left-color:var(--red)}.rec.ok{border-left-color:var(--green)}
+.rec p{margin:0;flex:1;font-size:14px}
+.rec .act{flex-wrap:wrap;justify-content:flex-end}
+.zrow{display:grid;grid-template-columns:60px 1fr 48px;gap:10px;align-items:center;margin:7px 0;font-size:13px}
+.zbar{position:relative;height:10px;background:var(--panel2);border-radius:99px}
+.zbar::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--muted)}
+.zfill{position:absolute;top:0;bottom:0;border-radius:99px;background:var(--green)}
+.zfill.warning{background:var(--yellow)}.zfill.critical{background:var(--red)}
+.stat-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.stat-row:last-child{border:0}
+.switch{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px}
+.switch input{width:38px;height:22px;appearance:none;background:var(--line);border-radius:99px;position:relative;cursor:pointer;transition:.2s;flex:none}
+.switch input::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s}
+.switch input:checked{background:var(--accent)}
+.switch input:checked::after{left:19px}
+
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:18px;padding:22px;width:min(720px,94vw);box-shadow:var(--shadow)}
+dialog::backdrop{background:rgba(0,0,0,.55);backdrop-filter:blur(3px)}
+.dlg-h{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:12px}
+.dlg-h h2{margin:0}
+.m-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:14px}
+.m-stats div{background:var(--panel2);border-radius:10px;padding:10px}
+.m-stats span{display:block;font-size:11px;color:var(--muted)}
+.m-stats b{font-size:18px}
+.dlg-f{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+
+#toasts{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:8px;z-index:50}
+.toast{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);padding:11px 16px;border-radius:10px;box-shadow:var(--shadow);font-size:14px;max-width:320px;animation:fade .25s}
+.toast.warning{border-left-color:var(--yellow)}.toast.critical{border-left-color:var(--red)}.toast.normal{border-left-color:var(--green)}
+
+@media(max-width:1000px){.g-2,.g-2b,.g-eq{grid-template-columns:1fr}.form{grid-template-columns:1fr 1fr}.form .field:first-child{grid-column:1/-1}}
+@media(max-width:860px){
+  .app{grid-template-columns:1fr}
+  .side{position:fixed;top:auto;bottom:0;left:0;right:0;height:auto;z-index:20;flex-direction:row;padding:6px;border-right:0;border-top:1px solid var(--line)}
+  .brand,.side-f{display:none}
+  #nav{flex-direction:row;width:100%;justify-content:space-around}
+  #nav button{flex-direction:column;gap:2px;padding:6px 8px;font-size:11px;align-items:center}
+  .nav-badge{position:absolute;top:0;right:2px;margin:0}
+  .top{padding:12px 16px}main{padding:16px 16px 100px}
+  #toasts{bottom:84px}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><span class="logo">◈</span><div><b>Smart Campus</b><small>AI Control</small></div></div>
+    <nav id="nav" aria-label="Разделы">
+      <button data-tab="dashboard"><i>▦</i><span>Обзор</span></button>
+      <button data-tab="rooms"><i>⌂</i><span>Помещения</span></button>
+      <button data-tab="devices"><i>📡</i><span>Устройства</span></button>
+      <button data-tab="incidents"><i>⚑</i><span>Инциденты</span><em class="nav-badge" id="nav-inc"></em></button>
+      <button data-tab="analytics"><i>✦</i><span>AI-аналитика</span></button>
+    </nav>
+    <div class="side-f">Горячие клавиши:<br><span class="kbd">1</span>–<span class="kbd">5</span> разделы · <span class="kbd">Пробел</span> пауза</div>
+  </aside>
+
+  <div>
+    <header class="top">
+      <h1 id="page-title">Обзор кампуса</h1>
+      <div class="top-r">
+        <div class="live" id="live"><span class="dot"></span><span id="live-txt">Live</span><small id="clock"></small></div>
+        <button class="ib" id="btn-pause" title="Пауза / продолжить (Пробел)">⏸ Пауза</button>
+        <button class="ib" id="btn-export">⬇ CSV</button>
+        <button class="ib" id="btn-theme" aria-label="Сменить тему">🌓</button>
+      </div>
+    </header>
+
+    <main id="main">
+      <!-- DASHBOARD -->
+      <section id="dashboard" class="tab active">
+        <div class="grid g-kpi" id="kpis"></div>
+        <div class="grid g-2">
+          <div class="card"><h3>Нагрузка кампуса, кВт · факт и прогноз</h3><div class="chart-box"><canvas id="c-power"></canvas></div></div>
+          <div class="card"><h3>Состояние помещений</h3><div class="chart-box"><canvas id="c-status"></canvas></div></div>
+        </div>
+        <div class="grid g-2b">
+          <div class="card"><h3>CO₂ по помещениям, ppm</h3><div class="chart-box sm"><canvas id="c-co2"></canvas></div></div>
+          <div class="card"><h3>Лента событий</h3><ul class="events" id="events"></ul></div>
+        </div>
+      </section>
+
+      <!-- ROOMS -->
+      <section id="rooms" class="tab">
+        <h2>Помещения</h2><p class="sub">Нажмите на карточку, чтобы увидеть историю показателей и управлять вентиляцией.</p>
+        <div class="toolbar">
+          <input id="r-q" type="search" placeholder="Поиск: A-101, лекционная…" aria-label="Поиск помещений">
+          <select id="r-b" aria-label="Корпус"><option value="">Все корпуса</option><option>Корпус A</option><option>Корпус B</option></select>
+          <select id="r-s" aria-label="Статус"><option value="">Любой статус</option><option value="normal">Норма</option><option value="warning">Внимание</option><option value="critical">Критично</option></select>
+          <select id="r-o" aria-label="Сортировка"><option value="id">По номеру</option><option value="co2">Сначала высокий CO₂</option><option value="temp">Сначала жаркие</option><option value="comfort">Сначала некомфортные</option><option value="occ">По заполненности</option></select>
+        </div>
+        <div class="rooms" id="rooms-grid"></div>
+      </section>
+
+      <!-- DEVICES -->
+      <section id="devices" class="tab">
+        <h2>IoT-устройства</h2><p class="sub">Датчики CO₂ / температуры и счётчики энергии. Офлайн-устройства можно перезагрузить.</p>
+        <div class="toolbar">
+          <input id="d-q" type="search" placeholder="Поиск по ID, помещению, типу…" aria-label="Поиск устройств">
+          <select id="d-s" aria-label="Статус"><option value="">Любой статус</option><option value="online">Online</option><option value="low">Низкий заряд</option><option value="offline">Offline</option></select>
+        </div>
+        <div class="tw"><table><thead><tr><th>ID</th><th>Помещение</th><th>Тип</th><th>Показание</th><th>Заряд</th><th>Сигнал</th><th>Статус</th><th></th></tr></thead><tbody id="devices-body"></tbody></table></div>
+      </section>
+
+      <!-- INCIDENTS -->
+      <section id="incidents" class="tab">
+        <h2>Инциденты</h2><p class="sub">Создание, редактирование, смена статуса и удаление. Данные сохраняются в браузере.</p>
+        <div class="card" style="margin-bottom:16px">
+          <h3 id="form-title">Новый инцидент</h3>
+          <form class="form" id="inc-form">
+            <div class="field"><label for="i-title">Описание проблемы</label><input id="i-title" required maxlength="120" placeholder="Например: не работает кондиционер"></div>
+            <div class="field"><label for="i-room">Помещение</label><select id="i-room"></select></div>
+            <div class="field"><label for="i-prio">Приоритет</label><select id="i-prio"><option>Низкий</option><option selected>Средний</option><option>Высокий</option></select></div>
+            <div class="act"><button class="btn" type="submit" id="i-submit">Создать</button><button class="btn ghost" type="button" id="i-cancel" hidden>Отмена</button></div>
+          </form>
+        </div>
+        <div class="toolbar">
+          <input id="i-q" type="search" placeholder="Поиск по описанию или помещению…" aria-label="Поиск инцидентов">
+          <select id="i-f" aria-label="Фильтр статуса"><option value="">Все статусы</option><option>Открыто</option><option>В работе</option><option>Решено</option></select>
+        </div>
+        <div class="tw"><table><thead><tr><th>№</th><th>Проблема</th><th>Помещение</th><th>Приоритет</th><th>Создан</th><th>Статус</th><th></th></tr></thead><tbody id="inc-body"></tbody></table></div>
+      </section>
+
+      <!-- ANALYTICS -->
+      <section id="analytics" class="tab">
+        <h2>AI-аналитика и аномалии</h2><p class="sub">Z-score считается по скользящему окну последних 30 замеров CO₂ каждого помещения.</p>
+        <div class="grid g-2b">
+          <div class="card"><h3>Рекомендации системы</h3><div class="recs" id="recs"></div></div>
+          <div class="card"><h3>Z-score по помещениям (CO₂)</h3><div id="zlist"></div><small>Зелёный |z|&lt;2 · жёлтый 2–3 · красный &gt;3</small></div>
+        </div>
+        <div class="grid g-eq">
+          <div class="card">
+            <h3>Энергия и экономика</h3>
+            <div id="energy-stats"></div>
+            <div class="field" style="margin-top:12px"><label for="tariff">Тариф, сом за кВт·ч</label><input id="tariff" type="number" min="0" step="0.1" value="3"></div>
+            <label class="switch" style="margin-top:14px"><input type="checkbox" id="auto-vent"><span>Авто-вентиляция (включается при CO₂ &gt; 1000 ppm)</span></label>
+          </div>
+          <div class="card"><h3>Корреляция: заполненность ↔ CO₂</h3><div class="chart-box sm"><canvas id="c-scatter"></canvas></div></div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<dialog id="room-dialog" aria-labelledby="m-title">
+  <div class="dlg-h"><div><h2 id="m-title"></h2><small id="m-sub"></small></div><button class="ib" id="m-close" aria-label="Закрыть">✕</button></div>
+  <div class="m-stats" id="m-stats"></div>
+  <div class="chart-box sm"><canvas id="c-modal"></canvas></div>
+  <div class="dlg-f"><button class="btn" id="m-vent"></button><button class="btn ghost" id="m-inc">Создать инцидент</button></div>
+</dialog>
+<div id="toasts" aria-live="polite"></div>
+
+<script>
+(()=>{'use strict';
+/* ---------- утилиты ---------- */
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const rnd=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const LS={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
+const cv=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmtT=d=>new Date(d).toLocaleTimeString('ru-RU');
+const push=(a,v)=>{a.push(v);if(a.length>HN)a.shift()};
+const HN=30,RANK={normal:0,warning:1,critical:2},ST_RU={normal:'Норма',warning:'Внимание',critical:'Критично'};
+const TABS=['dashboard','rooms','devices','incidents','analytics'];
+const TITLES={dashboard:'Обзор кампуса',rooms:'Помещения',devices:'IoT-устройства',incidents:'Инциденты',analytics:'AI-аналитика'};
+const S={paused:false,auto:false,tariff:3,tab:'dashboard'};
+
+/* ---------- данные: помещения ---------- */
+const TYPES=[{n:'Компьютерный класс',cap:28,base:2.4},{n:'Лекционная',cap:80,base:1.8},{n:'Лаборатория',cap:20,base:3.2}];
+const rooms=Array.from({length:12},(_,i)=>{
+  const t=TYPES[i%3],b=i<6?'A':'B';
+  return{id:`${b}-${101+i%6}`,building:`Корпус ${b}`,type:t.n,cap:t.cap,base:t.base,
+    occ:Math.round(t.cap*rnd(.1,.8)),temp:rnd(21,23.5),co2:rnd(480,780),hum:rnd(38,55),vent:false,power:t.base,
+    hCo2:[],hTemp:[],hOcc:[],z:0,status:'normal',comfort:100};
+});
+rooms[2].occ=rooms[2].cap;rooms[7].occ=rooms[7].cap;
+const hTot=[],hT=[];
+
+function step(r){
+  r.occ=clamp(r.occ+Math.round(rnd(-3,3)*(r.cap/40)),0,r.cap);
+  const ratio=r.occ/r.cap;
+  let tc=420+ratio*1100;if(r.vent)tc=Math.max(420,tc*.55);
+  r.co2=clamp(r.co2+(tc-r.co2)*(r.vent?.25:.12)+rnd(-25,25),400,2600);
+  if(Math.random()<.007)r.co2+=rnd(250,500);
+  const tt=21+ratio*5-(r.vent?.8:0);
+  r.temp=clamp(r.temp+(tt-r.temp)*.1+rnd(-.2,.2),17,33);
+  r.hum=clamp(r.hum+rnd(-1,1),30,65);
+  r.power=Math.max(.2,r.base*(.6+ratio*.5)+(r.vent?.4:0)+rnd(-.1,.1));
+  push(r.hCo2,r.co2);push(r.hTemp,r.temp);push(r.hOcc,ratio*100);
+}
+function zscore(a){
+  if(a.length<5)return 0;
+  const h=a.slice(0,-1),m=h.reduce((x,y)=>x+y,0)/h.length;
+  const sd=Math.max(Math.sqrt(h.reduce((x,y)=>x+(y-m)**2,0)/h.length),15);
+  return(a[a.length-1]-m)/sd;
+}
+function evalRoom(r){
+  r.z=zscore(r.hCo2);
+  let s='normal';
+  if(r.co2>1000||r.temp>27||Math.abs(r.z)>2)s='warning';
+  if(r.co2>1500||r.temp>29||Math.abs(r.z)>3)s='critical';
+  r.status=s;
+  r.comfort=Math.round(clamp(100-Math.abs(r.temp-22)*6-Math.max(0,r.co2-800)/15-Math.abs(r.hum-45)*.5,0,100));
+}
+
+/* ---------- данные: устройства ---------- */
+const devices=[];
+rooms.forEach((r,i)=>{
+  devices.push({id:`IOT-${300+i*2}`,room:r.id,kind:'env',type:'Датчик CO₂ / T',battery:rnd(45,100),signal:Math.round(rnd(60,100)),status:'online'});
+  devices.push({id:`IOT-${301+i*2}`,room:r.id,kind:'pow',type:'Счётчик энергии',battery:null,signal:Math.round(rnd(70,100)),status:'online'});
+});
+devices[6].battery=12;devices[6].status='low';devices[17].status='offline';
+const devOnline=()=>devices.filter(d=>d.status!=='offline').length;
+function devValue(d){
+  if(d.status==='offline')return'—';
+  const r=rooms.find(x=>x.id===d.room);
+  return d.kind==='env'?`${r.temp.toFixed(1)} °C · ${Math.round(r.co2)} ppm`:`${r.power.toFixed(2)} кВт`;
+}
+
+/* ---------- данные: инциденты ---------- */
+const STATUSES=['Открыто','В работе','Решено'];
+let incidents=LS.get('sc_incidents_v2',null)||[
+  {id:1,title:'Высокий уровень CO₂ после лекции',room:'A-102',prio:'Средний',status:'Открыто',created:Date.now()-5*36e5},
+  {id:2,title:'Сбой кондиционера',room:'B-103',prio:'Высокий',status:'В работе',created:Date.now()-26*36e5},
+  {id:3,title:'Не отвечает датчик',room:'B-106',prio:'Низкий',status:'Решено',created:Date.now()-72*36e5}
+];
+let nextId=Math.max(0,...incidents.map(i=>i.id))+1;
+const saveInc=()=>LS.set('sc_incidents_v2',incidents);
+const openInc=()=>incidents.filter(i=>i.status!=='Решено');
+const PRIO_CLS={'Высокий':'critical','Средний':'warning','Низкий':'normal'},STAT_CLS={'Открыто':'warning','В работе':'info','Решено':'normal'};
+function createIncident(title,room,prio,quiet){
+  if(incidents.some(i=>i.title===title&&i.room===room&&i.status!=='Решено')){toast('Такой инцидент уже открыт','warning');return false}
+  incidents.unshift({id:nextId++,title,room,prio,status:'Открыто',created:Date.now()});
+  saveInc();if(!quiet)toast(`Инцидент создан: ${room}`,'normal');logEvent('info',`Создан инцидент в ${room}: ${title}`);return true;
+}
+
+/* ---------- события и уведомления ---------- */
+const evlog=[];
+function logEvent(level,text,notify){evlog.unshift({t:Date.now(),level,text});if(evlog.length>40)evlog.pop();if(notify)toast(text,level)}
+function toast(msg,lvl='info'){
+  const el=document.createElement('div');el.className=`toast ${lvl}`;el.textContent=msg;$('#toasts').appendChild(el);
+  setTimeout(()=>el.remove(),4500);
+}
+
+/* ---------- прогноз ---------- */
+function forecast(k){
+  const n=hTot.length;let sx=0,sy=0,sxy=0,sxx=0;
+  hTot.forEach((y,x)=>{sx+=x;sy+=y;sxy+=x*y;sxx+=x*x});
+  const d=n*sxx-sx*sx||1,m=(n*sxy-sx*sy)/d,b=(sy-m*sx)/n,vals=[],labels=[];
+  for(let i=1;i<=k;i++){vals.push(Math.max(0,m*(n-1+i)+b));labels.push(`+${i*3}с`)}
+  return{vals,labels,slope:m};
+}
+
+/* ---------- графики ---------- */
+const charts={};
+function opts(extra={}){
+  const t=cv('--muted'),g=cv('--line');
+  return{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
+    plugins:{legend:{labels:{color:t,boxWidth:12}}},
+    scales:{x:{ticks:{color:t,maxTicksLimit:6},grid:{color:g}},y:{ticks:{color:t},grid:{color:g},...(extra.y||{})}}};
+}
+function mk(key,sel,cfg){
+  if(typeof Chart==='undefined')return;
+  if(charts[key]){charts[key].destroy();delete charts[key]}
+  if(!$(sel))return;charts[key]=new Chart($(sel),cfg);
+}
+function initCharts(){
+  const acc=cv('--accent');
+  mk('power','#c-power',{type:'line',data:{labels:[],datasets:[
+    {label:'Факт, кВт',data:[],borderColor:acc,backgroundColor:acc+'33',fill:true,tension:.35,pointRadius:0,borderWidth:2},
+    {label:'Прогноз',data:[],borderColor:cv('--yellow'),borderDash:[6,4],tension:.2,pointRadius:0,borderWidth:2}]},options:opts()});
+  mk('status','#c-status',{type:'doughnut',data:{labels:['Норма','Внимание','Критично'],datasets:[{data:[0,0,0],backgroundColor:[cv('--green'),cv('--yellow'),cv('--red')],borderColor:cv('--panel'),borderWidth:3}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,cutout:'68%',plugins:{legend:{position:'bottom',labels:{color:cv('--muted')}}}}});
+  mk('co2','#c-co2',{type:'bar',data:{labels:rooms.map(r=>r.id),datasets:[{label:'CO₂, ppm',data:[],backgroundColor:[],borderRadius:6}]},options:{...opts(),plugins:{legend:{display:false}}}});
+  updateCharts();
+}
+function initScatter(){
+  mk('scatter','#c-scatter',{type:'scatter',data:{datasets:[{label:'Помещения',data:[],backgroundColor:cv('--accent'),pointRadius:6}]},
+    options:{...opts({}),interaction:{mode:'nearest'},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw.id}: ${c.raw.x.toFixed(0)}% → ${Math.round(c.raw.y)} ppm`}}},
+      scales:{x:{title:{display:true,text:'Заполненность, %',color:cv('--muted')},ticks:{color:cv('--muted')},grid:{color:cv('--line')},min:0,max:100},
+              y:{title:{display:true,text:'CO₂, ppm',color:cv('--muted')},ticks:{color:cv('--muted')},grid:{color:cv('--line')}}}}});
+  updateCharts();
+}
+function updateCharts(){
+  const c=charts,n=hTot.length;
+  if(c.power){const f=forecast(10);
+    c.power.data.labels=hT.concat(f.labels);
+    c.power.data.datasets[0].data=hTot.slice();
+    c.power.data.datasets[1].data=Array(n-1).fill(null).concat([hTot[n-1]],f.vals);
+    c.power.update('none')}
+  if(c.status){const cnt=[0,0,0];rooms.forEach(r=>cnt[RANK[r.status]]++);c.status.data.datasets[0].data=cnt;c.status.update('none')}
+  if(c.co2){const col={normal:cv('--green'),warning:cv('--yellow'),critical:cv('--red')};
+    c.co2.data.datasets[0].data=rooms.map(r=>Math.round(r.co2));c.co2.data.datasets[0].backgroundColor=rooms.map(r=>col[r.status]);c.co2.update('none')}
+  if(c.scatter){c.scatter.data.datasets[0].data=rooms.map(r=>({x:r.occ/r.cap*100,y:r.co2,id:r.id}));c.scatter.update('none')}
+}
+
+/* ---------- рендер: KPI и события ---------- */
+function renderKPIs(){
+  const norm=rooms.filter(r=>r.status==='normal').length,crit=rooms.filter(r=>r.status==='critical').length;
+  const comfort=Math.round(rooms.reduce((a,r)=>a+r.comfort,0)/rooms.length);
+  const kw=hTot[hTot.length-1],f=forecast(10),oi=openInc().length;
+  const k=[
+    ['🌿','Индекс комфорта',`${comfort}<small>/100</small>`,comfort>=75?'Условия хорошие':'Есть зоны дискомфорта'],
+    ['🏫','Помещения в норме',`${norm}<small>/${rooms.length}</small>`,crit?`критичных: ${crit}`:'критичных нет'],
+    ['📡','Устройства online',`${devOnline()}<small>/${devices.length}</small>`,`офлайн: ${devices.length-devOnline()}`],
+    ['⚑','Открытые инциденты',`<span style="color:${oi?cv('--yellow'):cv('--green')}">${oi}</span>`,`всего: ${incidents.length}`],
+    ['⚡','Нагрузка, кВт',kw.toFixed(1),`прогноз: ${f.vals[f.vals.length-1].toFixed(1)} кВт ${f.slope>=0?'↗':'↘'}`]];
+  $('#kpis').innerHTML=k.map(x=>`<div class="card kpi"><span class="ico">${x[0]}</span><h3>${x[1]}</h3><b>${x[2]}</b><div class="k-sub">${x[3]}</div></div>`).join('');
+}
+function renderEvents(){
+  $('#events').innerHTML=evlog.length?evlog.slice(0,12).map(e=>`<li><span class="ev-dot ${e.level}"></span><time>${fmtT(e.t)}</time><span>${esc(e.text)}</span></li>`).join(''):'<li class="empty">Событий пока нет</li>';
+}
+function renderNav(){const n=openInc().length;$('#nav-inc').textContent=n||''}
+
+/* ---------- рендер: помещения ---------- */
+function sparkSvg(a,color){
+  const mn=Math.min(...a),mx=Math.max(...a),rg=mx-mn||1,w=100,h=28;
+  const pts=a.map((v,i)=>`${(i/(a.length-1)*w).toFixed(1)},${(h-2-(v-mn)/rg*(h-4)).toFixed(1)}`).join(' ');
+  return`<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>`;
+}
+function renderRooms(){
+  const q=$('#r-q').value.trim().toLowerCase(),bf=$('#r-b').value,sf=$('#r-s').value,so=$('#r-o').value;
+  const cmp={id:(a,b)=>a.id.localeCompare(b.id),co2:(a,b)=>b.co2-a.co2,temp:(a,b)=>b.temp-a.temp,comfort:(a,b)=>a.comfort-b.comfort,occ:(a,b)=>b.occ/b.cap-a.occ/a.cap}[so];
+  const list=rooms.filter(r=>(!q||(r.id+' '+r.type).toLowerCase().includes(q))&&(!bf||r.building===bf)&&(!sf||r.status===sf)).sort(cmp);
+  const col={normal:cv('--green'),warning:cv('--yellow'),critical:cv('--red')};
+  $('#rooms-grid').innerHTML=list.length?list.map(r=>`
+    <article class="room ${r.status}" data-room="${r.id}" tabindex="0" role="button" aria-label="Помещение ${r.id}, ${ST_RU[r.status]}">
+      <div class="room-h"><div><b>${r.id}</b><small>${r.building} · ${r.type}</small></div><span class="badge ${r.status}">${ST_RU[r.status]}</span></div>
+      <div class="room-m"><div><span>Темп.</span><b>${r.temp.toFixed(1)}°</b></div><div><span>CO₂, ppm</span><b>${Math.round(r.co2)}</b></div><div><span>Влажн.</span><b>${Math.round(r.hum)}%</b></div></div>
+      ${sparkSvg(r.hCo2,col[r.status])}
+      <div class="bar" style="margin-top:8px"><i style="width:${(r.occ/r.cap*100).toFixed(0)}%"></i></div>
+      <div class="room-f"><span>👥 ${r.occ}/${r.cap}</span><span>комфорт ${r.comfort}</span><span>${r.vent?'🌀 вент. вкл':''}</span></div>
+    </article>`).join(''):'<div class="empty card" style="grid-column:1/-1">Ничего не найдено</div>';
+}
+
+/* ---------- рендер: устройства ---------- */
+function renderDevices(){
+  const q=$('#d-q').value.trim().toLowerCase(),sf=$('#d-s').value;
+  const list=devices.filter(d=>(!q||(d.id+' '+d.room+' '+d.type).toLowerCase().includes(q))&&(!sf||d.status===sf));
+  const cls={online:'normal',low:'warning',offline:'critical'},ru={online:'ONLINE',low:'НИЗКИЙ ЗАРЯД',offline:'OFFLINE'};
+  $('#devices-body').innerHTML=list.length?list.map(d=>`<tr>
+    <td><b>${d.id}</b></td><td>${d.room}</td><td>${d.type}</td><td>${devValue(d)}</td>
+    <td>${d.battery==null?'<small>сеть</small>':`<div class="bar" style="width:70px;display:inline-block;vertical-align:middle"><i style="width:${d.battery}%;background:${d.battery<20?cv('--red'):cv('--green')}"></i></div> <small>${Math.round(d.battery)}%</small>`}</td>
+    <td>${d.status==='offline'?'—':d.signal+'%'}</td><td><span class="badge ${cls[d.status]}">${ru[d.status]}</span></td>
+    <td>${d.status==='offline'?`<button class="btn sm" data-reboot="${d.id}">Перезагрузить</button>`:''}</td></tr>`).join(''):'<tr><td colspan="8" class="empty">Ничего не найдено</td></tr>';
+}
+
+/* ---------- рендер: инциденты ---------- */
+let editId=null;
+function renderIncidents(){
+  const q=$('#i-q').value.trim().toLowerCase(),f=$('#i-f').value;
+  const list=incidents.filter(i=>(!q||(i.title+' '+i.room).toLowerCase().includes(q))&&(!f||i.status===f));
+  $('#inc-body').innerHTML=list.length?list.map(i=>`<tr>
+    <td>#${i.id}</td><td>${esc(i.title)}</td><td>${esc(i.room)}</td>
+    <td><span class="badge ${PRIO_CLS[i.prio]}">${esc(i.prio)}</span></td>
+    <td><small>${new Date(i.created).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</small></td>
+    <td><select data-st="${i.id}" aria-label="Статус инцидента ${i.id}">${STATUSES.map(s=>`<option${s===i.status?' selected':''}>${s}</option>`).join('')}</select></td>
+    <td><div class="act"><button class="btn sm ghost" data-edit="${i.id}">Изменить</button><button class="btn sm danger" data-del="${i.id}">Удалить</button></div></td></tr>`).join(''):'<tr><td colspan="7" class="empty">Инцидентов нет — это хорошо 🎉</td></tr>';
+}
+function resetForm(){editId=null;$('#inc-form').reset();$('#i-prio').value='Средний';$('#form-title').textContent='Новый инцидент';$('#i-submit').textContent='Создать';$('#i-cancel').hidden=true}
+
+/* ---------- рендер: аналитика ---------- */
+function buildRecs(){
+  const out=[];
+  rooms.forEach(r=>{
+    const flagged=r.co2>1000;
+    if(flagged)out.push({lvl:r.co2>1500?'critical':'warning',text:`<b>${r.id}</b>: CO₂ ${Math.round(r.co2)} ppm (z = ${r.z.toFixed(1)}). ${r.vent?'Вентиляция уже включена — ждём снижения.':'Рекомендуется включить принудительную вентиляцию.'}`,acts:r.vent?[]:[['vent',r.id,'Включить вентиляцию']]});
+    if(r.temp>27)out.push({lvl:r.temp>29?'critical':'warning',text:`<b>${r.id}</b>: температура ${r.temp.toFixed(1)} °C. Проверьте кондиционирование и снизьте уставку.`,acts:[['inc',r.id,'Перегрев помещения','Создать заявку']]});
+    if(!flagged&&Math.abs(r.z)>2)out.push({lvl:Math.abs(r.z)>3?'critical':'warning',text:`<b>${r.id}</b>: статистическая аномалия CO₂, z = ${r.z.toFixed(1)}. Показатель резко отклонился от недавней нормы.`,acts:[['inc',r.id,'Аномалия CO₂ (Z-score)','Создать заявку']]});
+    if(r.occ/r.cap<.1&&r.power>r.base*.9)out.push({lvl:'info',text:`<b>${r.id}</b>: помещение почти пустое (${r.occ} чел.), но потребляет ${r.power.toFixed(1)} кВт. Можно отключить свет и технику.`,acts:[]});
+  });
+  const off=devices.filter(d=>d.status==='offline'),low=devices.filter(d=>d.status==='low');
+  if(off.length)out.push({lvl:'warning',text:`Устройства офлайн (${off.length}): ${off.map(d=>d.id).join(', ')}. Требуется проверка связи.`,acts:[]});
+  if(low.length)out.push({lvl:'info',text:`Низкий заряд у ${low.length} устр.: ${low.map(d=>d.id).join(', ')}. Запланируйте замену батарей.`,acts:[]});
+  const w={critical:0,warning:1,info:2};out.sort((a,b)=>w[a.lvl]-w[b.lvl]);
+  return out;
+}
+function renderAnalytics(){
+  const recs=buildRecs();
+  $('#recs').innerHTML=recs.length?recs.slice(0,10).map(r=>`<div class="rec ${r.lvl}"><p>${r.text}</p><div class="act">${r.acts.map(a=>a[0]==='vent'?`<button class="btn sm" data-vent="${a[1]}">${a[2]}</button>`:`<button class="btn sm ghost" data-newinc="${a[1]}" data-title="${esc(a[2])}">${a[3]}</button>`).join('')}</div></div>`).join(''):'<div class="rec ok"><p>✅ Все показатели в норме. Аномалий не обнаружено.</p></div>';
+  $('#zlist').innerHTML=rooms.map(r=>{const z=clamp(r.z,-4,4),cl=Math.abs(r.z)>3?'critical':Math.abs(r.z)>2?'warning':'';
+    return`<div class="zrow"><b>${r.id}</b><div class="zbar"><div class="zfill ${cl}" style="${z>=0?`left:50%;width:${z/4*50}%`:`right:50%;width:${-z/4*50}%`}"></div></div><span>${r.z>0?'+':''}${r.z.toFixed(1)}</span></div>`}).join('');
+  const kw=hTot[hTot.length-1],avg=hTot.reduce((a,b)=>a+b,0)/hTot.length,f=forecast(10);
+  const idle=rooms.filter(r=>r.occ/r.cap<.1).reduce((a,r)=>a+Math.max(0,r.power-r.base*.5),0);
+  $('#energy-stats').innerHTML=[
+    ['Текущая нагрузка',`${kw.toFixed(1)} кВт`],['Средняя за окно',`${avg.toFixed(1)} кВт`],
+    ['Прогноз через 30 с',`${f.vals[f.vals.length-1].toFixed(1)} кВт`],
+    ['Оценка расхода за сутки',`${(avg*24).toFixed(0)} кВт·ч`],
+    ['Стоимость за сутки',`≈ ${(avg*24*S.tariff).toFixed(0)} сом`],
+    ['Потенциал экономии (пустые аудитории)',`${idle.toFixed(1)} кВт`]
+  ].map(x=>`<div class="stat-row"><span>${x[0]}</span><b>${x[1]}</b></div>`).join('');
+}
+function renderTab(){({dashboard:()=>{renderKPIs();renderEvents()},rooms:renderRooms,devices:renderDevices,incidents:renderIncidents,analytics:renderAnalytics})[S.tab]()}
+
+/* ---------- модальное окно помещения ---------- */
+let modalRoom=null;
+function openRoom(id){
+  modalRoom=rooms.find(r=>r.id===id);if(!modalRoom)return;
+  $('#room-dialog').showModal();
+  if(typeof Chart!=='undefined'){
+    if(charts.modal)charts.modal.destroy();
+    const g=cv('--line'),t=cv('--muted');
+    charts.modal=new Chart($('#c-modal'),{type:'line',data:{labels:hT.slice(),datasets:[
+      {label:'CO₂, ppm',data:modalRoom.hCo2.slice(),borderColor:cv('--accent'),tension:.35,pointRadius:0,yAxisID:'y'},
+      {label:'Температура, °C',data:modalRoom.hTemp.slice(),borderColor:cv('--yellow'),tension:.35,pointRadius:0,yAxisID:'y1'}]},
+      options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{labels:{color:t}}},
+        scales:{x:{ticks:{color:t,maxTicksLimit:5},grid:{color:g}},y:{ticks:{color:t},grid:{color:g}},y1:{position:'right',ticks:{color:t},grid:{drawOnChartArea:false}}}}});
+  }
+  renderModal();
+}
+function renderModal(){
+  const r=modalRoom;if(!r||!$('#room-dialog').open)return;
+  $('#m-title').textContent=`Помещение ${r.id}`;$('#m-sub').textContent=`${r.building} · ${r.type} · вместимость ${r.cap}`;
+  $('#m-stats').innerHTML=[['Статус',`<span class="badge ${r.status}">${ST_RU[r.status]}</span>`],['Темп.',`${r.temp.toFixed(1)} °C`],['CO₂',`${Math.round(r.co2)} ppm`],['Влажность',`${Math.round(r.hum)}%`],['Людей',`${r.occ}/${r.cap}`],['Мощность',`${r.power.toFixed(2)} кВт`],['Z-score',r.z.toFixed(2)],['Комфорт',`${r.comfort}/100`]].map(x=>`<div><span>${x[0]}</span><b>${x[1]}</b></div>`).join('');
+  $('#m-vent').textContent=r.vent?'🌀 Выключить вентиляцию':'🌀 Включить вентиляцию';
+  const c=charts.modal;if(c){c.data.labels=hT.slice();c.data.datasets[0].data=r.hCo2.slice();c.data.datasets[1].data=r.hTemp.slice();c.update('none')}
+}
+
+/* ---------- такт симуляции ---------- */
+function tick(){
+  if(S.paused)return;
+  rooms.forEach(r=>{
+    const prev=r.status;
+    if(S.auto){if(r.co2>1000)r.vent=true;else if(r.co2<650)r.vent=false}
+    step(r);evalRoom(r);
+    if(RANK[r.status]>RANK[prev])logEvent(r.status,`${r.id}: ${r.status==='critical'?'критичное':'повышенное'} отклонение — CO₂ ${Math.round(r.co2)} ppm, ${r.temp.toFixed(1)} °C`,r.status==='critical');
+    else if(r.status==='normal'&&prev!=='normal')logEvent('normal',`${r.id}: показатели вернулись в норму`);
+  });
+  devices.forEach(d=>{
+    if(d.status==='offline')return;
+    d.signal=clamp(d.signal+Math.round(rnd(-3,3)),35,100);
+    if(d.battery!=null){d.battery=Math.max(0,d.battery-rnd(0,.12));if(d.battery<15&&d.status==='online'){d.status='low';logEvent('warning',`${d.id}: низкий заряд батареи`)}}
+    if(Math.random()<.003){d.status='offline';logEvent('warning',`${d.id} (${d.room}) потерял связь`,true)}
+  });
+  push(hTot,rooms.reduce((a,r)=>a+r.power,0));push(hT,fmtT(Date.now()));
+  renderNav();updateCharts();renderTab();renderModal();
+}
+
+/* ---------- навигация ---------- */
+function show(tab){
+  if(!TABS.includes(tab))tab='dashboard';
+  S.tab=tab;
+  $$('.tab').forEach(e=>e.classList.toggle('active',e.id===tab));
+  $$('[data-tab]').forEach(b=>{const on=b.dataset.tab===tab;b.classList.toggle('active',on);on?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current')});
+  $('#page-title').textContent=TITLES[tab];
+  try{history.replaceState(null,'','#'+tab)}catch{}
+  if(tab==='analytics'&&!charts.scatter)initScatter();
+  renderTab();
+  requestAnimationFrame(()=>Object.values(charts).forEach(c=>c.resize()));
+}
+function setPaused(p){S.paused=p;$('#live').classList.toggle('paused',p);$('#live-txt').textContent=p?'Пауза':'Live';$('#btn-pause').textContent=p?'▶ Продолжить':'⏸ Пауза'}
+function setTheme(t){document.documentElement.dataset.theme=t;LS.set('sc_theme',t);initCharts();if(S.tab==='analytics')initScatter();else delete charts.scatter;renderTab()}
+
+/* ---------- экспорт CSV ---------- */
+function exportCsv(){
+  let rows,name;
+  if(S.tab==='devices'){name='devices';rows=[['ID','Помещение','Тип','Показание','Заряд %','Сигнал %','Статус'],...devices.map(d=>[d.id,d.room,d.type,devValue(d),d.battery==null?'':Math.round(d.battery),d.signal,d.status])]}
+  else if(S.tab==='incidents'){name='incidents';rows=[['№','Проблема','Помещение','Приоритет','Статус','Создан'],...incidents.map(i=>[i.id,i.title,i.room,i.prio,i.status,new Date(i.created).toLocaleString('ru-RU')])]}
+  else{name='rooms';rows=[['ID','Корпус','Тип','Темп. °C','CO2 ppm','Влажность %','Людей','Мощность кВт','Z-score','Комфорт','Статус'],...rooms.map(r=>[r.id,r.building,r.type,r.temp.toFixed(1),Math.round(r.co2),Math.round(r.hum),r.occ,r.power.toFixed(2),r.z.toFixed(2),r.comfort,ST_RU[r.status]])]}
+  const csv='\ufeff'+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(';')).join('\r\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download=`campus-${name}-${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href);
+  toast('Файл CSV сохранён','normal');
+}
+
+/* ---------- обработчики ---------- */
+$('#nav').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(b)show(b.dataset.tab)});
+$('#btn-pause').onclick=()=>setPaused(!S.paused);
+$('#btn-export').onclick=exportCsv;
+$('#btn-theme').onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
+['r-q','r-b','r-s','r-o'].forEach(id=>$('#'+id).addEventListener('input',renderRooms));
+['d-q','d-s'].forEach(id=>$('#'+id).addEventListener('input',renderDevices));
+['i-q','i-f'].forEach(id=>$('#'+id).addEventListener('input',renderIncidents));
+$('#rooms-grid').addEventListener('click',e=>{const c=e.target.closest('[data-room]');if(c)openRoom(c.dataset.room)});
+$('#rooms-grid').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){const c=e.target.closest('[data-room]');if(c){e.preventDefault();openRoom(c.dataset.room)}}});
+$('#m-close').onclick=()=>$('#room-dialog').close();
+$('#room-dialog').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.close()});
+$('#room-dialog').addEventListener('close',()=>{if(charts.modal){charts.modal.destroy();delete charts.modal}});
+$('#m-vent').onclick=()=>{modalRoom.vent=!modalRoom.vent;logEvent('info',`${modalRoom.id}: вентиляция ${modalRoom.vent?'включена':'выключена'}`);renderModal();renderRooms()};
+$('#m-inc').onclick=()=>{createIncident(`Проверка помещения (CO₂ ${Math.round(modalRoom.co2)} ppm)`,modalRoom.id,modalRoom.status==='critical'?'Высокий':'Средний');renderNav();renderKPIs()};
+$('#devices-body').addEventListener('click',e=>{
+  const b=e.target.closest('[data-reboot]');if(!b)return;
+  const d=devices.find(x=>x.id===b.dataset.reboot);d.status=d.battery!=null&&d.battery<15?'low':'online';d.signal=Math.round(rnd(70,95));
+  toast(`${d.id} перезагружено и снова в сети`,'normal');logEvent('normal',`${d.id} вернулся в сеть`);renderDevices();renderKPIs();
+});
+$('#inc-form').addEventListener('submit',e=>{
+  e.preventDefault();const t=$('#i-title').value.trim(),room=$('#i-room').value,p=$('#i-prio').value;if(!t)return;
+  if(editId){Object.assign(incidents.find(x=>x.id===editId),{title:t,room,prio:p});saveInc();toast('Инцидент обновлён','normal')}
+  else if(!createIncident(t,room,p,false))return;
+  resetForm();renderIncidents();renderNav();renderKPIs();
+});
+$('#i-cancel').onclick=resetForm;
+$('#inc-body').addEventListener('click',e=>{
+  const ed=e.target.closest('[data-edit]'),dl=e.target.closest('[data-del]');
+  if(ed){const i=incidents.find(x=>x.id==ed.dataset.edit);editId=i.id;$('#i-title').value=i.title;$('#i-room').value=i.room;$('#i-prio').value=i.prio;$('#form-title').textContent=`Редактирование #${i.id}`;$('#i-submit').textContent='Сохранить';$('#i-cancel').hidden=false;$('#i-title').focus();window.scrollTo({top:0,behavior:'smooth'})}
+  if(dl&&confirm('Удалить инцидент безвозвратно?')){incidents=incidents.filter(x=>x.id!=dl.dataset.del);saveInc();toast('Инцидент удалён','warning');renderIncidents();renderNav();renderKPIs()}
+});
+$('#inc-body').addEventListener('change',e=>{
+  const s=e.target.closest('[data-st]');if(!s)return;
+  incidents.find(x=>x.id==s.dataset.st).status=s.value;saveInc();logEvent('info',`Инцидент #${s.dataset.st}: статус «${s.value}»`);renderNav();renderKPIs();
+});
+$('#recs').addEventListener('click',e=>{
+  const v=e.target.closest('[data-vent]'),n=e.target.closest('[data-newinc]');
+  if(v){const r=rooms.find(x=>x.id===v.dataset.vent);r.vent=true;logEvent('info',`${r.id}: вентиляция включена по рекомендации AI`);toast(`Вентиляция включена в ${r.id}`,'normal');renderAnalytics()}
+  if(n){createIncident(n.dataset.title,n.dataset.newinc,'Средний');renderNav();renderAnalytics()}
+});
+$('#tariff').addEventListener('input',e=>{S.tariff=Math.max(0,parseFloat(e.target.value)||0);renderAnalytics()});
+$('#auto-vent').addEventListener('change',e=>{S.auto=e.target.checked;toast(`Авто-вентиляция ${S.auto?'включена':'выключена'}`,'info')});
+document.addEventListener('keydown',e=>{
+  if(e.target.matches('input,select,textarea')||e.ctrlKey||e.metaKey||e.altKey)return;
+  if(e.key>='1'&&e.key<='5')show(TABS[+e.key-1]);
+  else if(e.key===' '&&!e.target.closest('[role=button],button')){e.preventDefault();setPaused(!S.paused)}
+});
+
+/* ---------- запуск ---------- */
+for(let i=0;i<HN;i++){
+  rooms.forEach(step);
+  hTot.push(rooms.reduce((a,r)=>a+r.power,0));hT.push(fmtT(Date.now()-(HN-i)*3000));
+}
+rooms.forEach(evalRoom);
+$('#i-room').innerHTML=rooms.map(r=>`<option>${r.id}</option>`).join('');
+logEvent('info',`Система запущена: ${rooms.length} помещений, ${devices.length} устройств`);
+rooms.filter(r=>r.status!=='normal').forEach(r=>logEvent(r.status,`${r.id}: ${ST_RU[r.status].toLowerCase()} — CO₂ ${Math.round(r.co2)} ppm`));
+const savedTheme=LS.get('sc_theme',null)||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');
+document.documentElement.dataset.theme=savedTheme;
+initCharts();renderNav();show((location.hash||'#dashboard').slice(1));
+setInterval(tick,3000);
+setInterval(()=>{$('#clock').textContent=new Date().toLocaleTimeString('ru-RU')},1000);
+$('#clock').textContent=new Date().toLocaleTimeString('ru-RU');
+if(typeof Chart==='undefined')toast('Chart.js не загрузился — графики недоступны (проверьте интернет)','warning');
+})();
+</script>
+</body>
+</html>
